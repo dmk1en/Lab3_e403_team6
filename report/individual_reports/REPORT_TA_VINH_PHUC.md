@@ -28,7 +28,7 @@
 - **Diagnosis**: Lý do là System Prompt chưa đưa ra pattern strict hoặc bộ dữ liệu Few-shot chưa đủ nhấn mạnh bước dừng `Final Answer:`. Do đó LLM tự ý sinh ra `Action: None required...` nhưng Parser của agent quy định bắt buộc phải chộp được pattern cụ thể bằng RegEx.
 - **Solution**: 
   - Khắc phục 1: Viết lại System Prompt nhấn mạnh phần 5 (output format), buộc LLM nếu muốn ngừng dùng tool thì phải xài `Final Answer:`.
-  - Khắc phục 2: Thay vì chỉ vứt lỗi đi, append thẳng dòng nhắc nhở vào observation để đưa lại cho LLM (ví dụ: `Observation: ERROR - Bạn đã quên định dạng... Vui lòng tuân thủ chặt chẽ định dạng.`) từ đó nó tỉnh và feedback lại ở bước tới thành `Final Answer:`.
+  - Khắc phục 2: Thay vì chỉ vứt lỗi đi, append thẳng dòng nhắc nhở vào observation để đưa lại cho LLM từ đó nó tỉnh và feedback lại ở bước tới thành `Final Answer:`.
 
 ---
 
