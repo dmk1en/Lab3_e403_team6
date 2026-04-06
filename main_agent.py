@@ -45,7 +45,7 @@ def run_tests():
     provider = get_provider()
     agent = ReActAgent(llm=provider, tools=ECOMMERCE_TOOLS_SPEC, max_steps=7)
     
-    # 5 Kịch bản (Test Cases) phủ đủ độ khó từ Dễ đến Ảo Giác
+    # 7 Kịch bản (Test Cases) phủ đủ độ khó từ Dễ đến Ảo Giác
     test_cases = [
         {
             "id": 1,
