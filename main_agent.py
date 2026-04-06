@@ -1,9 +1,42 @@
 import os
 import time
 from dotenv import load_dotenv
-from chatbot import get_provider
 from src.agent.agent import ReActAgent
 from src.tools.ecommerce_tools import ECOMMERCE_TOOLS_SPEC
+from src.core.openai_provider import OpenAIProvider
+# from src.core.local_provider import LocalProvider
+# from src.core.gemini_provider import GeminiProvider
+
+
+def get_provider():
+    load_dotenv()
+    
+    provider_name = os.getenv("DEFAULT_PROVIDER", "openai").lower()
+    
+    if provider_name == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("❌ Lỗi: OPENAI_API_KEY chưa được thiết lập trong file .env")
+            sys.exit(1)
+        return OpenAIProvider(model_name="gpt-4o", api_key=api_key)
+        
+    elif provider_name == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("❌ Lỗi: GEMINI_API_KEY chưa được thiết lập trong file .env")
+            sys.exit(1)
+        return GeminiProvider(model_name="gemini-1.5-flash", api_key=api_key)
+        
+    elif provider_name == "local":
+        model_path = os.getenv("LOCAL_MODEL_PATH", "./models/Phi-3-mini-4k-instruct-q4.gguf")
+        if not os.path.exists(model_path):
+            print(f"❌ Lỗi: Không tìm thấy model cục bộ tại {model_path}")
+            sys.exit(1)
+        return LocalProvider(model_path=model_path)
+    
+    else:
+        print(f"❌ Lỗi: Provider '{provider_name}' không được hỗ trợ.")
+        sys.exit(1)
 
 def run_tests():
     print("🚀 Đang khởi tạo ReAct Agent v1...")
