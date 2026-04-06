@@ -45,19 +45,48 @@ class ReActAgent:
         """
         logger.log_event("AGENT_START", {"input": user_input, "model": self.llm.model_name})
         
+        system_prompt = self.get_system_prompt()
         current_prompt = user_input
         steps = 0
 
         while steps < self.max_steps:
-            # TODO: Generate LLM response
-            # result = self.llm.generate(current_prompt, system_prompt=self.get_system_prompt())
+            # Generate LLM response
+            result = self.llm.generate(current_prompt, system_prompt=system_prompt)
+            content = result.get("content", "")
             
-            # TODO: Parse Thought/Action from result
+            logger.log_event("AGENT_THOUGHT", {"step": steps, "content": content})
+            # Print for visual trace
+            print(f"---\n🧠 Bước {steps+1}:\n{content.strip()}")
             
-            # TODO: If Action found -> Call tool -> Append Observation
-            
-            # TODO: If Final Answer found -> Break loop
-            
+            # 1. Parse Final Answer
+            if "Final Answer:" in content:
+                final_answer_match = re.search(r'Final Answer:\s*(.*)', content, re.DOTALL)
+                if final_answer_match:
+                    ans = final_answer_match.group(1).strip()
+                    logger.log_event("AGENT_END", {"steps": steps, "answer": ans})
+                    return ans
+                    
+            # 2. Parse Action and Tool
+            # We look for: Action: tool_name(arg1, arg2)
+            action_match = re.search(r'Action:\s*([A-Za-z0-9_]+)\((.*?)\)', content)
+            if action_match:
+                tool_name = action_match.group(1).strip()
+                args_str = action_match.group(2).strip()
+                
+                logger.log_event("AGENT_ACTION", {"tool": tool_name, "args": args_str})
+                
+                # Execute Tool
+                obs = self._execute_tool(tool_name, args_str)
+                logger.log_event("AGENT_OBSERVATION", {"observation": obs})
+                print(f"🔍 Trải nghiệm (Observation): {obs}")
+                
+                # Pass back the loop
+                current_prompt += f"\n\n{content}\nObservation: {obs}\n"
+            else:
+                # LLM bị ảo giác, không tuân thủ định dạng
+                logger.log_event("AGENT_ERROR_FORMAT", {"content": content})
+                current_prompt += f"\n\n{content}\nObservation: ERROR - Bạn đã quên định dạng (Action: tool_name(args)) hoặc quên gọi Final Answer:. Vui lòng tuân thủ chặt chẽ định dạng.\n"
+
             steps += 1
             
         logger.log_event("AGENT_END", {"steps": steps})
@@ -67,8 +96,32 @@ class ReActAgent:
         """
         Helper method to execute tools by name.
         """
-        for tool in self.tools:
-            if tool['name'] == tool_name:
-                # TODO: Implement dynamic function calling or simple if/else
-                return f"Result of {tool_name}"
-        return f"Tool {tool_name} not found."
+        try:
+            # Local import dể tránh rác context. Khởi tạo kết nối toolkit.
+            from src.tools.ecommerce_tools import check_stock, get_discount, calc_shipping
+            
+            if tool_name == "check_stock":
+                # args thường có dạng 'iphone' hoặc "iphone"
+                clean_arg = args.strip("'\" ")
+                res = check_stock(clean_arg)
+                return str(res)
+                
+            elif tool_name == "get_discount":
+                clean_arg = args.strip("'\" ")
+                res = get_discount(clean_arg)
+                return str(res)
+                
+            elif tool_name == "calc_shipping":
+                # args ví dụ: 2.5, 'Hanoi'
+                split_args = [a.strip("'\" ") for a in args.split(",")]
+                if len(split_args) < 2:
+                    return "ERROR: calc_shipping cần đúng 2 tham số: weight, destination"
+                weight = float(split_args[0])
+                dest = split_args[1]
+                res = calc_shipping(weight, dest)
+                return str(res)
+                
+            else:
+                return f"ERROR: Tool '{tool_name}' không tồn tại. Hãy chắc chắn bạn gọi tool có trong list."
+        except Exception as e:
+            return f"ERROR executing tool '{tool_name}': {e}"
